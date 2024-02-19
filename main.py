@@ -6,8 +6,42 @@ from audio_recorder_streamlit import audio_recorder
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import sqlite3
 
-os.environ["OPENAI_API_KEY"] = "YOUR_API_KEY"
+activity_summarizer_db = sqlite3.connect("activity_summarizer.db")
+activity_summarizer_cursor = activity_summarizer_db.cursor()
+activity_summarizer_cursor.execute("""
+CREATE TABLE IF NOT EXISTS activity_summarizer (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    prompt TEXT
+    output TEXT
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+)
+""")
+
+create_직무역량분석_db = sqlite3.connect("직무역량분석.db")
+직무역량분석_cursor = create_직무역량분석_db.cursor()
+직무역량분석_cursor.execute("""
+CREATE TABLE IF NOT EXISTS 직무역량분석 (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    prompt TEXT
+    직무역량분석 TEXT
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+)
+""")
+
+create_면접분석_db = sqlite3.connect("면접분석.db")
+면접분석_cursor = create_면접분석_db.cursor()
+면접분석_cursor.execute("""
+CREATE TABLE IF NOT EXISTS 면접분석 (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    prompt TEXT
+    면접분석 TEXT
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+)
+""")
+
+os.environ["OPENAI_API_KEY"] = "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"
 
 client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
@@ -75,7 +109,7 @@ for_better = """
 
 option = st.sidebar.selectbox(
     "이용할 기능을 선택하세요",
-    ("지원서 활동 요약 / 회사와의 적합도", "직무 역량 분석 (RCS), 로드맵 추천", "로드맵 추천 (RCS)", "직무 역량 분석 (MCS-1)", "로드맵 추천 (MCS-1)", "부서별 적합도", "면접 텍스트 변환 / 분석")
+    ("지원서 활동 요약 / 회사와의 적합도", "면접 질문 추천", "직무 역량 분석 (RCS), 로드맵 추천", "직무 역량 분석 (MCS-1)", "부서별 적합도", "면접 텍스트 변환 / 분석")
 )
 
 st.title(f"{option}")
@@ -162,6 +196,7 @@ if option == "지원서 활동 요약 / 회사와의 적합도":
         
         with st.chat_message("assistant"):
             st.markdown(f"integrity: {int(similarity_integrity)}, excellence: {int(similarity_excellence)}, courage: {int(similarity_courage)}, together: {int(similarity_together)}, for_better: {int(similarity_for_better)}")
+        
 
 if option == "면접 텍스트 변환 / 분석":
     uploaded_file = st.file_uploader("음성 파일을 선택하세요.", type=['wav', 'mp3'])
@@ -334,7 +369,7 @@ if option == "직무 역량 분석 (RCS), 로드맵 추천":
         ax.set_xticks(angles[:-1])
         ax.set_xticklabels(labels)
         
-        ax_p.set_title("Score of applicant", fontsize=14, fontweight='bold', color='blue', position=(0.5, 1.1))
+        ax.set_title("Score of applicant", fontsize=14, fontweight='bold', color='blue', position=(0.5, 1.1))
         
         st.session_state.messages.append({"role": "assistant", "content": st.pyplot(fig_applicant)})
         
@@ -375,13 +410,13 @@ if option == "직무 역량 분석 (RCS), 로드맵 추천":
                 st.session_state.messages.append({"role": "assistant", "content":f"""{labels[i]}수준 : 하
                                 해당 영역의 NCS 가이드북의 기본,  심화 부분에 대한 학습을 통해 교육시키는 것을 추천함."""})
                 with st.chat_message("assistant"):
-                    st.markdown(f"""{label[i]}수준 : 중
+                    st.markdown(f"""{labels[i]}수준 : 중
                                 해당 영역의 NCS 가이드북의 기본, 심화 부분에 대한 학습을 통해 교육시키는 것을 추천함""")
-            if similarity_list >= 80:
+            if similarity_list[i] >= 80:
                 st.session_state.messages.append({"role": "assistant", "content":f"""{labels[i]}수준 : 하
                                 해당 영역의 NCS 가이드북의 심화 부분에 대한 학습을 추천하며, 실무 중 부족한 부분이 드러날 경우 추가적 학습을 시키는 것을 추천함"""})
                 with st.chat_message("assistant"):
-                    st.markdown(f"""{label[i]}수준 : 상
+                    st.markdown(f"""{labels[i]}수준 : 상
                                 해당 영역의 NCS 가이드북의 심화 부분에 대한 학습을 추천하며, 실무 중 부족한 부분이 드러날 경우 추가적 학습을 시키는 것을 추천함""")
     
 if option == "부서별 적합도":
@@ -474,17 +509,54 @@ if option == "부서별 적합도":
     - 시장/고객/채널 Market Trend / Insight 및 전사 전략방향 제시
     """
     
+    strategy_text = """
+    ① 일반 전략 컨설팅
+    - 경영진단, 중장기 성장전략 및 Visioning
+    - 신사업 진출 전략 및 실행 지원
+    - 해외 진출 전략 (GTM Strategy)
+    - Deal-related Strategy (CDD, PM. in-organic growth strategy)
+    - 기타 공공기관 대상 전략 및 자문 등
+    ② 금융 산업 특화 전략 컨설팅
+    ③ 헬스케어 및 Bio 산업 특화 경영 컨설팅
+    """
+    
+    digital_text = """
+    ① 디지털 전략, 디지털 신사업 발굴 및 글로벌 진출 컨설팅
+    - 금융/비금융사 디지털 전략 및 비전 수립
+    - 디지털 신사업 발굴 및 매각/인수 실사 (Commercial Due Diligence)
+    - 플랫폼 및 스타트업 디지털 제휴 및 글로벌 진출 서비스
+    ② 데이터 전략 및 분석 컨설팅
+    - 데이터 전략 및 활용 모델 수립, 마이데이터 및 데이터 컨버전스 (금융+헬스케어+공공+통신+유통 등)
+    - 빅데이터/디지털 마케팅 플랫폼 마스터플랜 수립
+    - 실제 데이터 분석을 통한 고객 및 경영관리 Insight 도출
+    ③ 디지털 고객 경험 및 플랫폼 컨설팅
+    - 온라인과 오프라인. 민간과 공공을 넘나드는 플랫폼 설계
+    - 메타버스/스마트 시티/스마트 리조트 등 마스터 플랜 수립 4. 디지털 신기술 도입 및 컨설팅
+    - 가상자산/블록체인 (거래소, Custody, STO. NFT) 활용 방안 정의 및 도입 컨설팅
+    - Hyper Automation (Al. NLP, OCR, RPA 기반) 도입 컨설팅
+    - 디지털 대응을 위한 조직 구조 수립 및 역할 정의
+    5. 사이버 보안 (Cyber Security)
+    - 정보보호 인증 컨설팅, 보안 아키텍처, 보안 기술 관련 정책
+    - Cloud. loT 등 신기술 보안 타당성 검토, 보안 취약점 진단 및 모의해킹
+    (Web / APP / Device 5)
+    - OT보안 표준 수립 (기술, 거버넌스, MP, 인증), 글로벌 신규사업 참여 및 보안 컴플라이언스 자문
+"""
+    
     RCS_embedding = of.get_embedding(RCS_text)
     MCS1_embedding = of.get_embedding(MCS_1_text)
     MCS2_embedding = of.get_embedding(MCS_2_text)
     MCS3_embedding = of.get_embedding(MCS_3_text)
     MCS4_embedding = of.get_embedding(MCS_4_text)
+    strategy_embedding = of.get_embedding(strategy_text)
+    digital_embedding = of.get_embedding(digital_text)
     
     norm_RCS = np.linalg.norm(RCS_embedding)
     norm_MCS1 = np.linalg.norm(MCS1_embedding)
     norm_MCS2 = np.linalg.norm(MCS2_embedding)
     norm_MCS3 = np.linalg.norm(MCS3_embedding)
     norm_MCS4 = np.linalg.norm(MCS4_embedding)
+    norm_strategy = np.linalg.norm(strategy_embedding)
+    norm_digital = np.linalg.norm(digital_embedding)
     
     prompt = st.chat_input("submit application form here.")
     if prompt:
@@ -509,13 +581,15 @@ if option == "부서별 적합도":
         similarity_MCS2 = 180 * np.dot(application_embedding, MCS2_embedding) / (norm_application * norm_MCS2)
         similarity_MCS3 = 180 * np.dot(application_embedding, MCS3_embedding) / (norm_application * norm_MCS3)
         similarity_MCS4 = 180 * np.dot(application_embedding, MCS4_embedding) / (norm_application * norm_MCS4)
+        similarity_strategy = 180 * np.dot(application_embedding, strategy_embedding) / (norm_application * norm_strategy)
+        similarity_digital = 180 * np.dot(application_embedding, digital_embedding) / (norm_application * norm_digital)
         
-        similarity_list = [similarity_RCS, similarity_MCS1, similarity_MCS2, similarity_MCS3, similarity_MCS4]
+        similarity_list = [similarity_RCS, similarity_MCS1, similarity_MCS2, similarity_MCS3, similarity_MCS4, similarity_strategy, similarity_digital]
         integer_list = [int(num) for num in similarity_list]
         
         data = pd.DataFrame({
             '직무 적합도': similarity_list
-        }, index=["RCS", "MCS1", "MCS2", "MCS3", "MCS4"]
+        }, index=["RCS", "MCS1", "MCS2", "MCS3", "MCS4", "Strategy", "Digital"]
         )
         
         st.session_state.messages.append({"role": "assistant", "content": st.bar_chart(data)})

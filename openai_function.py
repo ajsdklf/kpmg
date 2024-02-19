@@ -2,8 +2,9 @@ from openai import OpenAI
 import json
 import time
 import os
+import sqlite3
 
-os.environ['OPENAI_API_KEY'] = 'YOUR_API_KEY'
+os.environ['OPENAI_API_KEY'] = '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'
 
 client = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
 
@@ -64,6 +65,3 @@ def save_response(prompt, response):
     c.execute('INSERT INTO activity_summarizer (prompt, output) VALUES (?, ?)', (prompt, response))
     conn.commit()
     conn.close()
-
-
-
