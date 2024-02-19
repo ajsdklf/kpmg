@@ -4,7 +4,7 @@ import time
 import os
 import sqlite3
 
-os.environ['OPENAI_API_KEY'] = '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'
+os.environ['OPENAI_API_KEY'] = 'your_api_key'
 
 client = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
 
