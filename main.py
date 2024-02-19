@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS 면접분석 (
 )
 """)
 
-os.environ["OPENAI_API_KEY"] = "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"
+os.environ["OPENAI_API_KEY"] = "your_api_key"
 
 client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
