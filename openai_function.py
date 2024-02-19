@@ -57,3 +57,13 @@ def get_embedding(text):
     )
     return response.data[0].embedding
 
+def save_response(prompt, response):
+    """데이터베이스에 프롬프트와 응답 저장"""
+    conn = sqlite3.connect('activity_summarizer.db')
+    c = conn.cursor()
+    c.execute('INSERT INTO activity_summarizer (prompt, output) VALUES (?, ?)', (prompt, response))
+    conn.commit()
+    conn.close()
+
+
+
